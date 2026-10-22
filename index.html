@@ -120,4 +120,7 @@ function submitScore(){const name=$('leader-name').value.trim(),total=overallTim
 }
 $('unit-select').onchange=setUnit;$('lesson-select').onchange=setLesson;$('challenge-select').onchange=setChallenge;$('start-button').onclick=()=>start(false);$('resume-button').onclick=()=>start(true);$('exit').onclick=()=>{snapshot();showSetup()};$('next-button').onclick=nextChallenge;$('tab-course').onclick=()=>switchView('course');$('tab-journey').onclick=()=>switchView('journey');$('back-button').onclick=()=>showSetup('journey');$('send-score').onclick=submitScore;$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇':'🔊';if(muted&&'speechSynthesis'in window)speechSynthesis.cancel()};$('speak-button').onclick=()=>speak($('study-word').textContent);
 selectFirst();refreshJourney();loadLeaderboard('setup-leaders');
-</script></body></html>
+</script>
+
+<script src="notes-pdf.js" defer></script>
+</body></html>
