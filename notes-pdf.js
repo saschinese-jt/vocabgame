@@ -85,23 +85,14 @@
     const pageW = 595.28, pageH = 841.89;
     const left = 54, right = 54, top = 55, bottom = 55;
     const contentW = pageW - left - right;
-    const ink = rgb(0.19, 0.22, 0.24);
-    const gray = rgb(0.37, 0.40, 0.43);
-    const blue = rgb(0.13, 0.41, 0.60);
+    const ink = rgb(0, 0, 0);
+    const gray = rgb(0.40, 0.40, 0.40);
+    const blue = rgb(0.08, 0.16, 0.30);
     let page, y;
 
     function newPage() {
       page = pdf.addPage([pageW, pageH]);
       y = pageH - top;
-      page.drawText('华文消消乐 · 我的词语笔记', {
-        x: left, y, size: 15, font: boldFont, color: blue
-      });
-      y -= 20;
-      page.drawLine({
-        start: { x: left, y }, end: { x: pageW - right, y },
-        thickness: 0.7, color: rgb(0.82, 0.85, 0.87)
-      });
-      y -= 24;
     }
 
     function drawLines(lines, font, size, leading, color) {
@@ -113,6 +104,16 @@
     }
 
     newPage();
+    page.drawText('华文消消乐 · 我的词语笔记', {
+      x: left, y, size: 15, font: boldFont, color: blue
+    });
+    y -= 20;
+    page.drawLine({
+      start: { x: left, y }, end: { x: pageW - right, y },
+      thickness: 0.7, color: rgb(0.82, 0.85, 0.87)
+    });
+    y -= 24;
+
     for (const lesson of lessons) {
       if (y < bottom + 90) newPage();
       const unit = ['一', '二', '三', '四', '五', '六'][lesson.unit - 1];
@@ -124,7 +125,7 @@
       for (const word of lesson.challenges.flat()) {
         const fields = [
           [word.word, boldFont, 16, 23, ink],
-          [word.pinyin, normalFont, 11.5, 19, gray],
+          [word.pinyin, normalFont, 11.5, 19, ink],
           [word.cn, normalFont, 12, 19, ink],
           [word.en, normalFont, 11.5, 19, gray]
         ];
