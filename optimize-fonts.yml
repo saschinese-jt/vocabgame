@@ -1,0 +1,70 @@
+name: Optimize PDF Fonts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fonttools
+        run: python -m pip install 'fonttools==4.63.0'
+      - name: Keep only characters used by the vocabulary notes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          from fontTools import subset
+          from fontTools.ttLib import TTFont
+
+          source = Path('vocab.js').read_text(encoding='utf-8-sig')
+          match = re.search(r'const\s+VOCAB_LESSONS\s*=\s*(\[[\s\S]*?\])\s*;', source)
+          if not match:
+              raise SystemExit('Cannot find VOCAB_LESSONS in vocab.js')
+          lessons = json.loads(match.group(1))
+          characters = set('华文消消乐 · 我的词语笔记 单元一二三四五六 0123456789 PDF ')
+          for lesson in lessons:
+              characters.update(lesson['title'])
+              for challenge in lesson['challenges']:
+                  for word in challenge:
+                      for field in ('word', 'pinyin', 'cn', 'en'):
+                          characters.update(word[field])
+          for weight in ('Regular', 'Bold'):
+              path = Path(f'fonts/Chinese-{weight}.ttf')
+              font = TTFont(path)
+              missing = sorted(c for c in characters if ord(c) not in font.getBestCmap())
+              if missing:
+                  raise SystemExit(f'{path} missing characters: {"".join(missing)}; upload the full font again before running')
+              original_size = path.stat().st_size
+              options = subset.Options()
+              options.layout_features = ['*']
+              options.name_IDs = ['*']
+              options.name_legacy = True
+              options.name_languages = ['*']
+              worker = subset.Subsetter(options=options)
+              worker.populate(unicodes=[ord(c) for c in characters])
+              worker.subset(font)
+              font.save(path)
+              result = TTFont(path)
+              assert all(ord(c) in result.getBestCmap() for c in characters)
+              print(f'{weight}: {original_size:,} -> {path.stat().st_size:,} bytes')
+          print(f'Vocabulary note characters: {len(characters)}')
+          PY
+      - name: Save optimized fonts to repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fonts/Chinese-Regular.ttf fonts/Chinese-Bold.ttf
+          if ! git diff --staged --quiet; then
+            git commit -m 'Optimize PDF fonts for vocabulary notes'
+            git push
+          fi
