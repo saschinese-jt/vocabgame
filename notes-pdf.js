@@ -156,21 +156,26 @@
       y -= 22;
     }
 
-    // 所有页面生成后，才知道准确的总页数。
-    const pages = pdf.getPages();
-    const pageCount = pages.length;
-    pages.forEach((sheet, index) => {
-      const footer = `${index + 1} / ${pageCount}`;
-      const fontSize = 9;
-      const width = normalFont.widthOfTextAtSize(footer, fontSize);
-      sheet.drawText(footer, {
-        x: (pageW - width) / 2,
-        y: 30,
-        size: fontSize,
-        font: normalFont,
-        color: ink
-      });
-    });
+// Page numbers: use the built-in Helvetica font.
+const pages = pdf.getPages();
+const pageCount = pages.length;
+const footerFont = await pdf.embedFont(
+  window.PDFLib.StandardFonts.Helvetica
+);
+
+pages.forEach((sheet, index) => {
+  const footer = `${index + 1}/${pageCount}`;
+  const fontSize = 9;
+  const width = footerFont.widthOfTextAtSize(footer, fontSize);
+
+  sheet.drawText(footer, {
+    x: (pageW - width) / 2,
+    y: 30,
+    size: fontSize,
+    font: footerFont,
+    color: ink
+  });
+});
 
     const bytes = await pdf.save();
     return new File([bytes], FILE_NAME, { type: 'application/pdf' });
