@@ -83,7 +83,7 @@
     const boldFont = await pdf.embedFont(bold, { subset: false });
 
     const pageW = 595.28, pageH = 841.89;
-    const left = 54, right = 54, top = 55, bottom = 55;
+    const left = 54, right = 54, top = 55, bottom = 67;
     const contentW = pageW - left - right;
     const ink = rgb(0, 0, 0);
     const gray = rgb(0.40, 0.40, 0.40);
@@ -95,11 +95,20 @@
       y = pageH - top;
     }
 
-    function drawLines(lines, font, size, leading, color) {
-      for (const text of lines) {
-        if (y - leading < bottom) newPage();
-        if (text) page.drawText(text, { x: left, y, size, font, color });
-        y -= leading;
+    function blockHeight(parts) {
+      return parts.reduce((total, part) => total + part.lines.length * part.leading, 0);
+    }
+
+    function drawBlock(parts) {
+      // 每个词语的四项内容必须整组写入同一页。
+      if (y - blockHeight(parts) < bottom) newPage();
+      for (const part of parts) {
+        for (const text of part.lines) {
+          if (text) page.drawText(text, {
+            x: left, y, size: part.size, font: part.font, color: part.color
+          });
+          y -= part.leading;
+        }
       }
     }
 
@@ -115,32 +124,53 @@
     y -= 24;
 
     for (const lesson of lessons) {
-      if (y < bottom + 90) newPage();
       const unit = ['一', '二', '三', '四', '五', '六'][lesson.unit - 1];
-      drawLines(linesFor(`单元${unit} · ${lesson.title}`, boldFont, 13, contentW),
-        boldFont, 13, 21, blue);
-      y -= 8;
-
-      // 词语数据、拼音与释义均直接来自 vocab.js，不维护第二份词库。
-      for (const word of lesson.challenges.flat()) {
+      const heading = {
+        lines: linesFor(`单元${unit} · ${lesson.title}`, boldFont, 13, contentW),
+        font: boldFont, size: 13, leading: 21, color: blue
+      };
+      const words = lesson.challenges.flat().map(word => {
         const fields = [
           [word.word, boldFont, 16, 23, ink],
           [word.pinyin, normalFont, 11.5, 19, ink],
           [word.cn, normalFont, 12, 19, ink],
           [word.en, normalFont, 11.5, 19, gray]
         ];
-        const prepared = fields.map(([value, font, size, leading, color]) => ({
-          lines: linesFor(value, font, size, contentW), font, size, leading, color
+        return fields.map(([value, font, size, leading, color]) => ({
+          lines: linesFor(value, font, size, contentW),
+          font, size, leading, color
         }));
-        const height = prepared.reduce((sum, part) => sum + part.lines.length * part.leading, 0);
-        if (y - height < bottom) newPage();
-        for (const part of prepared) {
-          drawLines(part.lines, part.font, part.size, part.leading, part.color);
-        }
+      });
+
+      // 课文标题和首个词条须同时容纳，避免页底出现孤立标题。
+      const firstWordHeight = words.length ? blockHeight(words[0]) : 0;
+      if (y - blockHeight([heading]) - 8 - firstWordHeight < bottom) newPage();
+      drawBlock([heading]);
+      y -= 8;
+
+      // 词语、拼音、中释和英释作为一个整体分页。
+      for (const parts of words) {
+        drawBlock(parts);
         y -= 14;
       }
-      y -= 12;
+      y -= 22;
     }
+
+    // 所有页面生成后，才知道准确的总页数。
+    const pages = pdf.getPages();
+    const pageCount = pages.length;
+    pages.forEach((sheet, index) => {
+      const footer = `${index + 1} / ${pageCount}`;
+      const fontSize = 9;
+      const width = normalFont.widthOfTextAtSize(footer, fontSize);
+      sheet.drawText(footer, {
+        x: (pageW - width) / 2,
+        y: 30,
+        size: fontSize,
+        font: normalFont,
+        color: ink
+      });
+    });
 
     const bytes = await pdf.save();
     return new File([bytes], FILE_NAME, { type: 'application/pdf' });
