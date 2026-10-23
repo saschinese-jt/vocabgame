@@ -3,7 +3,7 @@
   'use strict';
 
   // Paste the /exec deployment URL of YOUR bound Google Apps Script here.
-  const BACKUP_URL = 'https://script.google.com/macros/s/AKfycbwiVzsmhUIXhp4vVmIBQ0kJ7dVJgPXgMupaIjgNa0Ou1ws8_R4-gMB5tvs7C2BhMclN/exec';
+  const BACKUP_URL = '';
   const SETTINGS_KEY = 'cwqBackupProfile_v1';
   const $ = id => document.getElementById(id);
   const read = () => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; } };
@@ -36,6 +36,7 @@
   .cwq-card button:disabled{opacity:.5}
   .cwq-hint{font-size:12px;line-height:1.5;color:#766b62}
   .cwq-error{color:#a13f31;font-size:12px;margin-top:8px}
+  .cwq-working{font-size:13px;color:#54483f;margin-top:10px;font-weight:700}
   .cwq-code{font:800 21px ui-monospace,monospace;letter-spacing:1px;overflow-wrap:anywhere;padding:9px;background:#eaf1f6;border-radius:8px}
   .cwq-inline{margin:14px auto 0;color:#83766b;background:transparent;border:0;text-decoration:underline;font-size:12px;padding:5px 8px}
   @media(max-width:740px){.cwq-profile{right:7px;top:6px}.cwq-profile-toggle{padding:5px 6px;font-size:12px;max-width:112px}.cwq-name{max-width:66px}.cwq-status-en{font-size:10px}}
@@ -65,6 +66,8 @@
   function field(title,value='',max=40){card.append(text('label',title));const input=document.createElement('input');input.value=value;input.maxLength=max;input.autocomplete='off';card.append(input);return input}
   function closePanel(){if(!working)panel.hidden=true}
   function error(msg){let el=card.querySelector('.cwq-error');if(!el){el=text('div','','cwq-error');card.append(el)}el.textContent=msg}
+  function workingNotice(message){let el=card.querySelector('.cwq-working');if(!el){el=text('div','','cwq-working');card.append(el)}el.textContent=message}
+  function clearWorkingNotice(){card.querySelector('.cwq-working')?.remove()}
   function validateName(name){const v=name.trim().replace(/\s+/g,' ');if(!v||Array.from(v).length>20)throw Error('昵称须为1至20个字符。');if(!/[\p{L}\p{N}]/u.test(v))throw Error('昵称不能只有符号。');return v}
   function openPanel(next,first=false){mode=next;card.replaceChildren();panel.hidden=false;
     if(next==='name'){
@@ -81,7 +84,8 @@
       if(!BACKUP_URL){error('教师尚未设置 Google Apps Script 地址。');addButton('关闭',closePanel,true);return}
       if(!profile.name){openPanel('name',true);return}
       if(profile.code)card.append(text('p','你的恢复码：'+codeFormat(profile.code),'cwq-hint'));
-      addButton(profile.code?'更新备份':'首次备份并生成恢复码',()=>save());
+      const saveButton=addButton(profile.code?'更新备份':'首次备份并生成恢复码',()=>save());
+      saveButton.id='cwq-submit-backup';
       addButton('取消',closePanel,true);
     }else if(next==='restore'){
       card.append(text('h2','使用恢复码'));
@@ -117,23 +121,35 @@
     if(!BACKUP_URL){reject(Error('请先在 profile-backup.js 填写 Google Apps Script /exec 地址。'));return}
     if(pending){reject(Error('另一项备份操作仍在进行中。'));return}
     const requestId='cwq-'+(++requestCounter)+'-'+Date.now();
-    const timeout=setTimeout(()=>{if(pending?.id===requestId){pending=null;reject(Error('服务器未回应。请检查网络，再使用恢复码确认是否已保存。'))}},25000);
+    const timeout=setTimeout(()=>{if(pending?.id===requestId){pending=null;reject(Error('Google 服务器没有返回确认。请打开 Google Sheet 检查是否已有记录；不要连续点击，以免产生重复档案。'))}},18000);
     pending={id:requestId,resolve:v=>{clearTimeout(timeout);pending=null;resolve(v)},reject:e=>{clearTimeout(timeout);pending=null;reject(e)}};
     const form=document.createElement('form');form.method='POST';form.action=BACKUP_URL;form.target=frame.name;form.hidden=true;
     for(const [k,v] of Object.entries({action,requestId,...params})){const inp=document.createElement('input');inp.name=k;inp.value=String(v??'');form.append(inp)}
-    document.body.append(form);form.submit();form.remove();
+    try{document.body.append(form);form.submit();form.remove()}catch(e){form.remove();pending?.reject(e)}
   })}
   window.addEventListener('message',event=>{
-    if(!/^https:\/\/([a-z0-9-]+\.)?(script\.google\.com|googleusercontent\.com)$/i.test(event.origin))return;
+    if(!/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent\.com|script\.google\.com)$/i.test(event.origin))return;
     const data=event.data;
     if(data?.app!=='chinese-word-quest-backup'||!pending||data.requestId!==pending.id)return;
     pending.resolve(data.result);
   });
-  async function save(){if(working)return;working=true;const before=snapshotSignature();
-    try{const result=await api('save',{nickname:profile.name,code:profile.code,revision:profile.revision||0,progress:JSON.stringify(progress())});
-      if(!result.ok)throw Error(result.error||'备份失败。');
+  async function save(){
+    if(working)return;
+    working=true;
+    const before=snapshotSignature();
+    const button=$('cwq-submit-backup');
+    if(button){button.disabled=true;button.textContent='正在备份…'}
+    workingNotice('正在联系 Google，请勿重复点击。');
+    try{
+      const result=await api('save',{nickname:profile.name,code:profile.code,revision:profile.revision||0,progress:JSON.stringify(progress())});
+      if(!result?.ok)throw Error(result?.error||'备份失败，Google 没有确认保存成功。');
       profile.code=result.code;profile.revision=result.revision;profile.synced=before;profile.syncedAt=new Date().toISOString();persist();updateStatus();working=false;openPanel('saved');
-    }catch(e){working=false;error(e.message);updateStatus()}}
+    }catch(e){
+      working=false;clearWorkingNotice();
+      if(button){button.disabled=false;button.textContent=profile.code?'更新备份':'首次备份并生成恢复码'}
+      error(e?.message||'备份失败，请检查 Google Apps Script 部署。');updateStatus();
+    }
+  }
   async function restore(code){if(working)return;code=normaliseCode(code);if(code.length!==20){error('请输入完整的恢复码。');return}working=true;
     try{const result=await api('restore',{code});if(!result.ok)throw Error(result.error||'恢复失败');
       const hasLocal=!!Object.keys(progressData.best||{}).length||!!progressData.draft;
