@@ -3,7 +3,7 @@
   'use strict';
 
   // Paste the /exec deployment URL of YOUR bound Google Apps Script here.
-  const BACKUP_URL = '';
+  const BACKUP_URL = 'https://script.google.com/macros/s/AKfycbwiVzsmhUIXhp4vVmIBQ0kJ7dVJgPXgMupaIjgNa0Ou1ws8_R4-gMB5tvs7C2BhMclN/exec';
   const SETTINGS_KEY = 'cwqBackupProfile_v1';
   const $ = id => document.getElementById(id);
   const read = () => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; } };
