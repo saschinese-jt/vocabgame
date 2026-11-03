@@ -1,7 +1,7 @@
 /* Student profile and one-code cloud backup. */
 (() => {
   'use strict';
-  const BACKUP_URL = ''; // Paste your existing Apps Script /exec URL.
+  const BACKUP_URL = 'https://script.google.com/macros/s/AKfycbwiVzsmhUIXhp4vVmIBQ0kJ7dVJgPXgMupaIjgNa0Ou1ws8_R4-gMB5tvs7C2BhMclN/exec'; // Paste your existing Apps Script /exec URL.
   const KEY = 'cwqProfile_v2';
   const $ = id => document.getElementById(id);
   const parse = (raw, fallback = {}) => { try { return JSON.parse(raw) || fallback; } catch { return fallback; } };
