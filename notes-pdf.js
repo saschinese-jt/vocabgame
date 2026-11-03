@@ -187,7 +187,11 @@
     message.textContent = `正在整理 ${lessons.length} 课的笔记。`;
     try {
       const file = await createPdf(lessons);
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      const isMobileDevice =
+  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+if (isMobileDevice && navigator.share && navigator.canShare?.({ files: [file] })) {
         try {
           await navigator.share({ files: [file] });
           message.textContent = '请选择备忘录或其他应用保存 PDF。';
@@ -207,7 +211,7 @@
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      message.textContent = 'PDF 已生成，可从「文件」App 分享到备忘录。';
+      message.textContent = 'PDF 已下载。';
     } catch (error) {
       console.error('PDF export failed:', error);
       message.textContent = '导出失败：' + (error.message || String(error));
