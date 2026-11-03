@@ -621,12 +621,11 @@ const VOCAB_LESSONS_G2 = [
     "challenges": [
       [
         {
-          "word": "黄粱",
-          "pinyin": "huáng liáng",
-          "cn": "一种谷物；常用在“黄粱一梦”中。",
-          "en": "millet; yellow millet",
-          "play": "黄粱"
-        },
+          "word":"横梁",
+         "pinyin":"héng liáng",
+         "cn":"横向架设、用来支撑建筑结构的梁。",
+         "en":"horizontal supporting beam; crossbeam",
+         "play":"横梁"},
         {
           "word": "覆盖",
           "pinyin": "fù gài",
