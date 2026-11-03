@@ -118,7 +118,38 @@ function start(resume=false){chosen=chosenLesson();challengeIndex=Number($('chal
 function tickLabel(){$('timer').textContent=fmt(timeLeft)}
 function lineValid(path){if(path.length<=1)return true;const a=path[0],b=path[1],dr=Math.floor(b/5)-Math.floor(a/5),dc=b%5-a%5;if(Math.abs(dr)>1||Math.abs(dc)>1||(!dr&&!dc))return false;return path.every((p,i)=>{const r=Math.floor(a/5)+dr*i,c=a%5+dc*i;return r>=0&&r<5&&c>=0&&c<5&&p===r*5+c})}
 function resetSelection(){selected=[];refreshBoard()}
-function tap(i){if(paused||ended||board[i].empty)return;if(pendingSingle){clearTimeout(pendingSingle);pendingSingle=null}if(selected.includes(i)){resetSelection();return}if(selected.length&&!lineValid([...selected,i])){selected=[i]}else selected.push(i);refreshBoard();const str=selected.map(x=>board[x].char).join('');const idx=targets.findIndex((v,j)=>!found.includes(j)&&(v.play||v.word)===str);if(idx>=0){if(pendingSingle){clearTimeout(pendingSingle);pendingSingle=null}const hasLonger=targets.some((v,j)=>!found.includes(j)&&(v.play||v.word).startsWith(str)&&(v.play||v.word).length>str.length);if(hasLonger){pendingSingle=setTimeout(()=>{pendingSingle=null;accept(idx)},450)}else accept(idx);return}const prefix=targets.some((v,j)=>!found.includes(j)&&(v.play||v.word).startsWith(str));if(prefix)return;const extra=dictionary[str];if(str.length>=2&&extra&&!targets.some(t=>(t.play||t.word)===str)){showStudy({word:str,pinyin:extra.pinyin||'',cn:extra.definitions||extra.cn||'课外发现',en:extra.english||extra.en||''},true);return}wrong()}
+function tap(i){if(paused||ended||board[i].empty)return;if(pendingSingle){clearTimeout(pendingSingle);pendingSingle=null}if(selected.includes(i)){resetSelection();return}if(selected.length&&!lineValid([...selected,i])){selected=[i]}else selected.push(i);refreshBoard();const str=selected.map(x=>board[x].char).join('');const idx=targets.findIndex((v,j)=>!found.includes(j)&&(v.play||v.word)===str);if(idx>=0){if(pendingSingle){clearTimeout(pendingSingle);pendingSingle=null}const hasLonger=targets.some((v,j)=>!found.includes(j)&&(v.play||v.word).startsWith(str)&&(v.play||v.word).length>str.length);if(hasLonger){pendingSingle=setTimeout(()=>{pendingSingle=null;accept(idx)},450)}else accept(idx);return}
+         
+const prefix = targets.some((v, j) =>
+  !found.includes(j) && (v.play || v.word).startsWith(str)
+);
+if (prefix) return;
+
+const extra = dictionary[str];
+
+if (
+  str.length >= 2 &&
+  extra &&
+  !targets.some(t => (t.play || t.word) === str)
+) {
+  showStudy({
+    word: str,
+    pinyin: extra.pinyin || '',
+    cn: extra.definitions || extra.cn || '课外发现',
+    en: extra.english || extra.en || ''
+  }, true);
+  return;
+}
+
+// Allow students to continue selecting a longer dictionary word.
+const canBeDictionaryWord =
+  str.length < 5 &&
+  Object.keys(dictionary).some(word => word.startsWith(str));
+
+if (canBeDictionaryWord) return;
+
+wrong();
+}
 function wrong(){paused=true;document.querySelectorAll('.tile.active').forEach(el=>el.classList.add('wrong'));setTimeout(()=>{paused=false;resetSelection()},380)}
 function accept(idx){showStudy(targets[idx],false,idx)}
 function showStudy(item,bonus=false,idx=-1){paused=true;bonusMode=bonus;$('bonus-label').classList.toggle('hidden',!bonus);$('study-word').textContent=item.word;$('study-pinyin').textContent=item.pinyin||'';$('study-cn').textContent=item.cn||'';$('study-en').textContent=item.en||'';$('study-en').classList.toggle('hidden',!item.en);$('person-image').style.display='none';$('person-image').removeAttribute('src');$('study-modal').classList.add('show');if(!bonus&&!found.includes(idx)){found.push(idx);refreshBoard();snapshot()}$('study-close').onclick=()=>{if(!bonus){selected.forEach(i=>board[i].empty=true)}selected=[];$('study-modal').classList.remove('show');paused=false;refreshBoard();snapshot();if(found.length===targets.length&&!bonus){finish(true)}};speak(item.word)}
