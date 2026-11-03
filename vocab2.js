@@ -621,11 +621,12 @@ const VOCAB_LESSONS_G2 = [
     "challenges": [
       [
         {
-          "word":"横梁",
-         "pinyin":"héng liáng",
-         "cn":"横向架设、用来支撑建筑结构的梁。",
-         "en":"horizontal supporting beam; crossbeam",
-         "play":"横梁"},
+          "word": "横梁",
+          "pinyin": "héng liáng",
+          "cn": "横着支撑建筑结构的梁。",
+          "en": "horizontal beam",
+          "play": "横梁"
+        },
         {
           "word": "覆盖",
           "pinyin": "fù gài",
